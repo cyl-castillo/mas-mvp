@@ -2,6 +2,8 @@ package com.mas.developer;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.modelcontext.mcp.server.McpServer;
 import com.modelcontext.mcp.tool.Tool;
@@ -12,6 +14,8 @@ import com.modelcontext.mcp.tool.ToolResponse;
  * Simple Developer Agent exposing a generateCode tool using MCP.
  */
 public class DeveloperAgent {
+
+    private static final Logger LOGGER = Logger.getLogger(DeveloperAgent.class.getName());
 
     public static void main(String[] args) throws Exception {
         McpServer server = new McpServer();
@@ -30,13 +34,26 @@ public class DeveloperAgent {
 
     private static ToolResponse handleGenerateCode(ToolRequest request) {
         String story = request.getString("user_story");
-        String methodName = toMethodName(story);
-        String code = "public void " + methodName + "() {\n    // TODO: implement\n}";
+        if (story == null || story.isBlank()) {
+            LOGGER.warning("Received blank user story.");
+        } else {
+            LOGGER.info("Generating code for story: " + story);
+        }
+        try {
+            String methodName = toMethodName(story);
+            String code = "public void " + methodName + "() {\n    // TODO: implement\n}";
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("code", code);
-        result.put("language", "Java");
-        return ToolResponse.from(result);
+            Map<String, Object> result = new HashMap<>();
+            result.put("code", code);
+            result.put("language", "Java");
+            LOGGER.info("Generated code:\n" + code);
+            return ToolResponse.from(result);
+        } catch (Exception ex) {
+            LOGGER.log(Level.SEVERE, "Error generating code", ex);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", ex.getMessage());
+            return ToolResponse.from(error);
+        }
     }
 
     private static String toMethodName(String story) {
