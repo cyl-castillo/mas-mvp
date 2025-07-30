@@ -2,6 +2,7 @@ package com.mas.developer;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import com.modelcontext.mcp.server.McpServer;
 import com.modelcontext.mcp.tool.Tool;
@@ -12,6 +13,8 @@ import com.modelcontext.mcp.tool.ToolResponse;
  * Simple Developer Agent exposing a generateCode tool using MCP.
  */
 public class DeveloperAgent {
+
+    private static final Logger LOGGER = Logger.getLogger(DeveloperAgent.class.getName());
 
     public static void main(String[] args) throws Exception {
         McpServer server = new McpServer();
@@ -30,12 +33,14 @@ public class DeveloperAgent {
 
     private static ToolResponse handleGenerateCode(ToolRequest request) {
         String story = request.getString("user_story");
+        LOGGER.info(() -> "Generating code for story: " + story);
         String methodName = toMethodName(story);
         String code = "public void " + methodName + "() {\n    // TODO: implement\n}";
 
         Map<String, Object> result = new HashMap<>();
         result.put("code", code);
         result.put("language", "Java");
+        LOGGER.info(() -> "Generated code:\n" + code);
         return ToolResponse.from(result);
     }
 
