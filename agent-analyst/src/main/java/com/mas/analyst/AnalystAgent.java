@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.modelcontext.mcp.server.McpServer;
@@ -35,14 +36,25 @@ public class AnalystAgent {
 
     private static ToolResponse handleAnalyzeRequirement(ToolRequest request) {
         String requirement = request.getString("requirement");
-        LOGGER.info(() -> "Analyzing requirement: " + requirement);
-        List<String> stories = new ArrayList<>();
-        if (requirement != null && !requirement.isBlank()) {
-            stories.add("As a user, I want " + requirement);
+        if (requirement == null || requirement.isBlank()) {
+            LOGGER.warning("Received blank requirement.");
+        } else {
+            LOGGER.info("Analyzing requirement: " + requirement);
         }
-        Map<String, Object> result = new HashMap<>();
-        result.put("user_stories", stories);
-        LOGGER.info(() -> "Produced stories: " + stories);
-        return ToolResponse.from(result);
+        try {
+            List<String> stories = new ArrayList<>();
+            if (requirement != null && !requirement.isBlank()) {
+                stories.add("As a user, I want " + requirement);
+            }
+            Map<String, Object> result = new HashMap<>();
+            result.put("user_stories", stories);
+            LOGGER.info("Produced stories: " + stories);
+            return ToolResponse.from(result);
+        } catch (Exception ex) {
+            LOGGER.log(Level.SEVERE, "Error analyzing requirement", ex);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", ex.getMessage());
+            return ToolResponse.from(error);
+        }
     }
 }
