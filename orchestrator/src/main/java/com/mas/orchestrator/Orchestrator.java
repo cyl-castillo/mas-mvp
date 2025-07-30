@@ -17,6 +17,7 @@ public class Orchestrator {
         try (McpClient analyst = new McpClient("localhost", 8080);
              McpClient developer = new McpClient("localhost", 8081);
              McpClient tester = new McpClient("localhost", 8082);
+             McpClient fileWriter = new McpClient("localhost", 8083);
              BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
 
             System.out.print("Enter a requirement: ");
@@ -42,6 +43,17 @@ public class Orchestrator {
             ToolResponse devResp = developer.invoke(devReq);
             String code = devResp.getString("code");
             System.out.println("Generated code:\n" + code);
+
+            ToolRequest saveReq = ToolRequest.builder()
+                    .toolName("saveFile")
+                    .addParam("filename", "ProductFilter.java")
+                    .addParam("content", code)
+                    .build();
+            ToolResponse saveResp = fileWriter.invoke(saveReq);
+            String saveStatus = saveResp.getString("status");
+            String savePath = saveResp.getString("path");
+            System.out.println("FileWriter status: " + saveStatus);
+            System.out.println("File path: " + savePath);
 
             ToolRequest testReq = ToolRequest.builder()
                     .toolName("runTest")
