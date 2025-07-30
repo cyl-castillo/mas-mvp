@@ -2,11 +2,18 @@ package com.mas.orchestrator;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.net.URI;
+import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
-import com.modelcontext.mcp.client.McpClient;
-import com.modelcontext.mcp.tool.ToolRequest;
-import com.modelcontext.mcp.tool.ToolResponse;
+import io.modelcontextprotocol.client.McpClient;
+import io.modelcontextprotocol.client.McpSyncClient;
+import io.modelcontextprotocol.client.capabilities.ClientCapabilities;
+import io.modelcontextprotocol.schema.McpSchema.CallToolRequest;
+import io.modelcontextprotocol.schema.McpSchema.CallToolResult;
+import io.modelcontextprotocol.transport.McpTransport;
+import io.modelcontextprotocol.transport.SseClientTransport;
 
 /**
  * Orchestrator that coordinates Analyst, Developer and Tester agents using MCP.
@@ -14,56 +21,62 @@ import com.modelcontext.mcp.tool.ToolResponse;
 public class Orchestrator {
 
     public static void main(String[] args) throws Exception {
-        try (McpClient analyst = new McpClient("localhost", 8080);
-             McpClient developer = new McpClient("localhost", 8081);
-             McpClient tester = new McpClient("localhost", 8082);
-             McpClient fileWriter = new McpClient("localhost", 8083);
+        try (McpSyncClient analyst = createClient("localhost", 8080);
+             McpSyncClient developer = createClient("localhost", 8081);
+             McpSyncClient tester = createClient("localhost", 8082);
+             McpSyncClient fileWriter = createClient("localhost", 8083);
              BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
+
+            analyst.initialize();
+            developer.initialize();
+            tester.initialize();
+            fileWriter.initialize();
 
             System.out.print("Enter a requirement: ");
             String requirement = reader.readLine();
 
-            ToolRequest analyzeReq = ToolRequest.builder()
-                    .toolName("analyzeRequirement")
-                    .addParam("requirement", requirement)
-                    .build();
-            ToolResponse analyzeResp = analyst.invoke(analyzeReq);
-            List<String> stories = analyzeResp.getList("user_stories", String.class);
-            if (stories.isEmpty()) {
+            CallToolResult analyzeResp = analyst.callTool(
+                    new CallToolRequest("analyzeRequirement",
+                            Map.of("requirement", requirement)));
+            List<String> stories = (List<String>) analyzeResp.result()
+                    .get("user_stories");
+            if (stories == null || stories.isEmpty()) {
                 System.out.println("No user stories produced");
                 return;
             }
-            String story = stories.getFirst();
+            String story = stories.get(0);
             System.out.println("User story: " + story);
 
-            ToolRequest devReq = ToolRequest.builder()
-                    .toolName("generateCode")
-                    .addParam("user_story", story)
-                    .build();
-            ToolResponse devResp = developer.invoke(devReq);
-            String code = devResp.getString("code");
+            CallToolResult devResp = developer.callTool(
+                    new CallToolRequest("generateCode",
+                            Map.of("user_story", story)));
+            String code = (String) devResp.result().get("code");
             System.out.println("Generated code:\n" + code);
 
-            ToolRequest saveReq = ToolRequest.builder()
-                    .toolName("saveFile")
-                    .addParam("filename", "ProductFilter.java")
-                    .addParam("content", code)
-                    .build();
-            ToolResponse saveResp = fileWriter.invoke(saveReq);
-            String saveStatus = saveResp.getString("status");
-            String savePath = saveResp.getString("path");
+            CallToolResult saveResp = fileWriter.callTool(
+                    new CallToolRequest("saveFile",
+                            Map.of("filename", "ProductFilter.java",
+                                   "content", code)));
+            String saveStatus = (String) saveResp.result().get("status");
+            String savePath = (String) saveResp.result().get("path");
             System.out.println("FileWriter status: " + saveStatus);
             System.out.println("File path: " + savePath);
 
-            ToolRequest testReq = ToolRequest.builder()
-                    .toolName("runTest")
-                    .addParam("code", code)
-                    .build();
-            ToolResponse testResp = tester.invoke(testReq);
-            String result = testResp.getString("result");
-            String details = testResp.getString("details");
+            CallToolResult testResp = tester.callTool(
+                    new CallToolRequest("runTest",
+                            Map.of("code", code)));
+            String result = (String) testResp.result().get("result");
+            String details = (String) testResp.result().get("details");
             System.out.println("Test result: " + result);
             System.out.println("Details: " + details);
         }
+    }
+
+    private static McpSyncClient createClient(String host, int port) {
+        McpTransport transport = new SseClientTransport(URI.create("http://" + host + ":" + port));
+        return McpClient.sync(transport)
+                .requestTimeout(Duration.ofSeconds(10))
+                .capabilities(ClientCapabilities.builder().build())
+                .build();
     }
 }

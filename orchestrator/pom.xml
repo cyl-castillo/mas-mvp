@@ -14,8 +14,8 @@
     <dependencies>
         <!-- MCP Java SDK -->
         <dependency>
-            <groupId>com.modelcontext</groupId>
-            <artifactId>mcp-sdk</artifactId>
+            <groupId>io.modelcontextprotocol.sdk</groupId>
+            <artifactId>mcp</artifactId>
             <version>0.1.0</version>
         </dependency>
     </dependencies>

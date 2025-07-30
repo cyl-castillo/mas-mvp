@@ -5,10 +5,10 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.modelcontext.mcp.server.McpServer;
-import com.modelcontext.mcp.tool.Tool;
-import com.modelcontext.mcp.tool.ToolRequest;
-import com.modelcontext.mcp.tool.ToolResponse;
+import io.modelcontextprotocol.server.McpServer;
+import io.modelcontextprotocol.tool.Tool;
+import io.modelcontextprotocol.tool.ToolRequest;
+import io.modelcontextprotocol.tool.ToolResponse;
 
 /**
  * Simple Developer Agent exposing a generateCode tool using MCP.
